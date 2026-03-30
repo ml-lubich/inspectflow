@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ClipboardCheck,
   LayoutDashboard,
@@ -14,11 +14,14 @@ import {
   Menu,
   X,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/lib/auth-context";
+import { signOut } from "@/lib/database";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
@@ -30,7 +33,40 @@ const navItems = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading, profile } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [loading, user, router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
+  const initials = (profile?.fullName || user.email || "U")
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  const displayName = profile?.fullName || user.email?.split("@")[0] || "User";
+  const companyName = profile?.companyName || "My Company";
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push("/");
+  };
 
   const SidebarContent = () => (
     <>
@@ -73,19 +109,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="p-3">
         <div className="flex items-center gap-3 px-3 py-2">
           <Avatar className="h-8 w-8">
-            <AvatarFallback className="text-xs">MR</AvatarFallback>
+            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">Mike Reynolds</p>
-            <p className="text-xs text-gray-500 truncate">Summit Inspections</p>
+            <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
+            <p className="text-xs text-gray-500 truncate">{companyName}</p>
           </div>
         </div>
-        <Link href="/">
-          <Button variant="ghost" size="sm" className="w-full justify-start text-gray-500 hover:text-gray-700 mt-1">
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-gray-500 hover:text-gray-700 mt-1"
+          onClick={handleSignOut}
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Sign Out
+        </Button>
       </div>
     </>
   );

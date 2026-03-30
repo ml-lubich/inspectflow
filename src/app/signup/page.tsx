@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { signUp } from "@/lib/database";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -16,13 +17,19 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 500);
+    setError("");
+    const { error: authError } = await signUp(email, password, name);
+    if (authError) {
+      setError(authError.message);
+      setLoading(false);
+      return;
+    }
+    router.push("/dashboard");
   };
 
   return (
@@ -44,6 +51,11 @@ export default function SignupPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignup} className="space-y-4">
+              {error && (
+                <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg border border-red-200">
+                  {error}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
                 <Input

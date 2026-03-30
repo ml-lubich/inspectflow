@@ -1,22 +1,63 @@
 "use client";
 
-import { useState } from "react";
-import { Save, Building2, Upload } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Save, Building2, Upload, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { mockProfile } from "@/lib/mock-data";
+import { getProfile, updateProfile } from "@/lib/database";
 
 export default function SettingsPage() {
-  const [profile, setProfile] = useState(mockProfile);
+  const [profile, setProfile] = useState({
+    companyName: "",
+    phone: "",
+    email: "",
+    licenseNumber: "",
+    fullName: "",
+  });
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  useEffect(() => {
+    async function load() {
+      const data = await getProfile();
+      if (data) {
+        setProfile({
+          companyName: data.companyName,
+          phone: data.phone,
+          email: data.email,
+          licenseNumber: data.licenseNumber,
+          fullName: data.fullName,
+        });
+      }
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateProfile(profile);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error("Failed to save:", err);
+      alert("Failed to save settings.");
+    }
+    setSaving(false);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -35,6 +76,14 @@ export default function SettingsPage() {
           <CardDescription>This information appears on your inspection reports</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="fullName">Your Name</Label>
+            <Input
+              id="fullName"
+              value={profile.fullName}
+              onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="companyName">Company Name</Label>
             <Input
@@ -111,9 +160,12 @@ export default function SettingsPage() {
       <Separator />
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} className="px-6">
-          <Save className="w-4 h-4 mr-2" />
-          {saved ? "Saved!" : "Save Changes"}
+        <Button onClick={handleSave} className="px-6" disabled={saving}>
+          {saving ? (
+            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>
+          ) : (
+            <><Save className="w-4 h-4 mr-2" />{saved ? "Saved!" : "Save Changes"}</>
+          )}
         </Button>
       </div>
     </div>

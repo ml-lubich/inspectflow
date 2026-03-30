@@ -12,6 +12,7 @@ import {
   Home,
   ClipboardList,
   ListChecks,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,8 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { DEFAULT_CATEGORIES, type Rating, type InspectionItem, type PropertyDetails } from "@/lib/types";
+import { createInspection } from "@/lib/database";
+import { generateInspectionPDF } from "@/lib/pdf";
 
 const steps = [
   { id: 1, label: "Property Details", icon: Home },
@@ -53,6 +56,7 @@ export default function NewInspectionPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [activeCategory, setActiveCategory] = useState("Exterior");
+  const [saving, setSaving] = useState(false);
   const [property, setProperty] = useState<PropertyDetails>({
     address: "",
     propertyType: "Single Family",
@@ -73,9 +77,38 @@ export default function NewInspectionPage() {
   const inspectedCount = items.filter((i) => i.rating !== "Not Inspected").length;
   const categories = Object.keys(DEFAULT_CATEGORIES);
 
-  const handleExport = () => {
-    alert("PDF report generated! In production, this would download a PDF file.");
-    router.push("/dashboard/reports");
+  const handleSaveAndExport = async () => {
+    setSaving(true);
+    try {
+      const inspection = await createInspection(property, items, "completed");
+      if (inspection) {
+        // Generate PDF
+        const doc = generateInspectionPDF(inspection, {
+          companyName: "InspectFlow",
+          phone: "",
+          email: "",
+          licenseNumber: "",
+        });
+        doc.save(`Inspection-${property.address.replace(/[^a-zA-Z0-9]/g, "-")}.pdf`);
+      }
+      router.push("/dashboard/reports");
+    } catch (err) {
+      console.error("Failed to save inspection:", err);
+      alert("Failed to save. Please try again.");
+      setSaving(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    setSaving(true);
+    try {
+      await createInspection(property, items, "draft");
+      router.push("/dashboard");
+    } catch (err) {
+      console.error("Failed to save draft:", err);
+      alert("Failed to save draft. Please try again.");
+      setSaving(false);
+    }
   };
 
   return (
@@ -85,10 +118,13 @@ export default function NewInspectionPage() {
         <Button variant="ghost" size="icon" onClick={() => router.push("/dashboard")}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-gray-900">New Inspection</h1>
           <p className="text-sm text-gray-500">Complete each step to generate your report</p>
         </div>
+        <Button variant="outline" size="sm" onClick={handleSaveDraft} disabled={saving || !property.address}>
+          Save Draft
+        </Button>
       </div>
 
       {/* Step Indicator */}
@@ -419,9 +455,12 @@ export default function NewInspectionPage() {
           </Card>
 
           <div className="flex justify-center">
-            <Button size="lg" onClick={handleExport} className="px-8">
-              <FileText className="w-5 h-5 mr-2" />
-              Generate PDF Report
+            <Button size="lg" onClick={handleSaveAndExport} disabled={saving || !property.address} className="px-8">
+              {saving ? (
+                <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Saving...</>
+              ) : (
+                <><FileText className="w-5 h-5 mr-2" />Save & Generate PDF</>
+              )}
             </Button>
           </div>
         </div>

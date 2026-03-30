@@ -1,16 +1,36 @@
 "use client";
 
-import { use } from "react";
-import { ClipboardCheck, MapPin, Home, Calendar, User, Mail, Download } from "lucide-react";
+import { use, useEffect, useState } from "react";
+import { ClipboardCheck, MapPin, Home, Calendar, User, Mail, Download, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { mockInspections, mockProfile } from "@/lib/mock-data";
+import { getInspectionByShareToken } from "@/lib/database";
+import { generateInspectionPDF } from "@/lib/pdf";
+import type { Inspection } from "@/lib/types";
 
 export default function SharedReportPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
-  const inspection = mockInspections.find((i) => i.shareToken === token);
+  const [inspection, setInspection] = useState<Inspection | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const data = await getInspectionByShareToken(token);
+      setInspection(data);
+      setLoading(false);
+    }
+    load();
+  }, [token]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   if (!inspection) {
     return (
@@ -30,6 +50,16 @@ export default function SharedReportPage({ params }: { params: Promise<{ token: 
   const deficiencies = inspection.items.filter((i) => i.rating === "Poor" || i.rating === "Fair");
   const categories = [...new Set(inspection.items.map((i) => i.category))];
 
+  const handleDownload = () => {
+    const doc = generateInspectionPDF(inspection, {
+      companyName: "InspectFlow",
+      phone: "",
+      email: "",
+      licenseNumber: "",
+    });
+    doc.save(`Inspection-Report.pdf`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -48,11 +78,8 @@ export default function SharedReportPage({ params }: { params: Promise<{ token: 
           <CardContent className="p-6 sm:p-8 space-y-8">
             {/* Company Header */}
             <div className="text-center border-b border-gray-200 pb-6">
-              <h2 className="text-2xl font-bold text-gray-900">{mockProfile.companyName}</h2>
-              <p className="text-sm text-gray-500 mt-1">
-                {mockProfile.phone} | {mockProfile.email} | License: {mockProfile.licenseNumber}
-              </p>
-              <h3 className="text-lg font-semibold text-blue-600 mt-4">Home Inspection Report</h3>
+              <h2 className="text-2xl font-bold text-gray-900">Home Inspection Report</h2>
+              <h3 className="text-lg font-semibold text-blue-600 mt-2">{p.address}</h3>
             </div>
 
             {/* Property Details */}
@@ -63,8 +90,8 @@ export default function SharedReportPage({ params }: { params: Promise<{ token: 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                 <div className="flex items-center gap-2"><MapPin className="w-3 h-3 text-gray-400" />{p.address}</div>
                 <div><span className="text-gray-500">Type:</span> <span className="font-medium">{p.propertyType}</span></div>
-                <div><span className="text-gray-500">Year Built:</span> <span className="font-medium">{p.yearBuilt}</span></div>
-                <div><span className="text-gray-500">Sq Ft:</span> <span className="font-medium">{p.sqft}</span></div>
+                {p.yearBuilt && <div><span className="text-gray-500">Year Built:</span> <span className="font-medium">{p.yearBuilt}</span></div>}
+                {p.sqft && <div><span className="text-gray-500">Sq Ft:</span> <span className="font-medium">{p.sqft}</span></div>}
                 <div><span className="text-gray-500">Beds/Baths:</span> <span className="font-medium">{p.bedrooms}/{p.bathrooms}</span></div>
               </div>
             </div>
@@ -72,9 +99,9 @@ export default function SharedReportPage({ params }: { params: Promise<{ token: 
             <Separator />
 
             {/* Client */}
-            <div className="flex gap-6 text-sm">
-              <div className="flex items-center gap-2"><User className="w-4 h-4 text-gray-400" />{p.clientName}</div>
-              <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-gray-400" />{p.clientEmail}</div>
+            <div className="flex flex-wrap gap-6 text-sm">
+              {p.clientName && <div className="flex items-center gap-2"><User className="w-4 h-4 text-gray-400" />{p.clientName}</div>}
+              {p.clientEmail && <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-gray-400" />{p.clientEmail}</div>}
               <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-gray-400" />{inspection.createdAt}</div>
             </div>
 
@@ -145,7 +172,9 @@ export default function SharedReportPage({ params }: { params: Promise<{ token: 
 
         {/* Download button */}
         <div className="text-center">
-          <Button variant="outline"><Download className="w-4 h-4 mr-2" />Download PDF</Button>
+          <Button variant="outline" onClick={handleDownload}>
+            <Download className="w-4 h-4 mr-2" />Download PDF
+          </Button>
           <p className="text-xs text-gray-400 mt-3">
             Report generated by InspectFlow — Professional Inspection Software
           </p>

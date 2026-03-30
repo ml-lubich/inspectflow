@@ -1,21 +1,63 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FileText, Search, MapPin, Clock, Download, Share2, Eye } from "lucide-react";
+import { FileText, Search, MapPin, Clock, Download, Share2, Eye, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { mockInspections } from "@/lib/mock-data";
-import { useState } from "react";
+import { getInspections, getProfile } from "@/lib/database";
+import { generateInspectionPDF } from "@/lib/pdf";
+import type { Inspection } from "@/lib/types";
 
 export default function ReportsPage() {
   const [search, setSearch] = useState("");
-  const completed = mockInspections.filter(
-    (i) => i.status === "completed" &&
+  const [inspections, setInspections] = useState<Inspection[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const data = await getInspections();
+      setInspections(data);
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  const completed = inspections.filter(
+    (i) =>
+      i.status === "completed" &&
       (i.propertyDetails.address.toLowerCase().includes(search.toLowerCase()) ||
-       i.propertyDetails.clientName.toLowerCase().includes(search.toLowerCase()))
+        i.propertyDetails.clientName.toLowerCase().includes(search.toLowerCase()))
   );
+
+  const handleDownload = async (inspection: Inspection) => {
+    const profile = await getProfile();
+    const doc = generateInspectionPDF(inspection, {
+      companyName: profile?.companyName || "InspectFlow",
+      phone: profile?.phone || "",
+      email: profile?.email || "",
+      licenseNumber: profile?.licenseNumber || "",
+    });
+    doc.save(`Inspection-${inspection.propertyDetails.address.replace(/[^a-zA-Z0-9]/g, "-")}.pdf`);
+  };
+
+  const handleShare = (inspection: Inspection) => {
+    if (inspection.shareToken) {
+      const url = `${window.location.origin}/report/${inspection.shareToken}`;
+      navigator.clipboard.writeText(url);
+      alert("Share link copied to clipboard!");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -69,14 +111,18 @@ export default function ReportsPage() {
                 <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
                   <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{inspection.createdAt}</span>
                   <span>{inspection.propertyDetails.propertyType}</span>
-                  <span>{inspection.propertyDetails.sqft} sq ft</span>
+                  {inspection.propertyDetails.sqft && <span>{inspection.propertyDetails.sqft} sq ft</span>}
                 </div>
                 <div className="flex items-center gap-2">
                   <Link href={`/dashboard/reports/${inspection.id}`} className="flex-1">
                     <Button variant="outline" size="sm" className="w-full"><Eye className="w-3 h-3 mr-1" />View</Button>
                   </Link>
-                  <Button variant="outline" size="sm"><Download className="w-3 h-3" /></Button>
-                  <Button variant="outline" size="sm"><Share2 className="w-3 h-3" /></Button>
+                  <Button variant="outline" size="sm" onClick={() => handleDownload(inspection)}>
+                    <Download className="w-3 h-3" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleShare(inspection)}>
+                    <Share2 className="w-3 h-3" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>

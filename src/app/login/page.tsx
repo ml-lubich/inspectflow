@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { signIn } from "@/lib/database";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,14 +16,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Mock login — navigate to dashboard
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 500);
+    setError("");
+    const { error: authError } = await signIn(email, password);
+    if (authError) {
+      setError(authError.message);
+      setLoading(false);
+      return;
+    }
+    router.push("/dashboard");
   };
 
   return (
@@ -44,6 +50,11 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
+              {error && (
+                <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg border border-red-200">
+                  {error}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -58,9 +69,6 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <button type="button" className="text-xs text-blue-600 hover:text-blue-700">
-                    Forgot password?
-                  </button>
                 </div>
                 <div className="relative">
                   <Input
