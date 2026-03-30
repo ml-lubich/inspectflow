@@ -1,0 +1,156 @@
+"use client";
+
+import { use } from "react";
+import { ClipboardCheck, MapPin, Home, Calendar, User, Mail, Download } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { mockInspections, mockProfile } from "@/lib/mock-data";
+
+export default function SharedReportPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = use(params);
+  const inspection = mockInspections.find((i) => i.shareToken === token);
+
+  if (!inspection) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="max-w-md w-full mx-4">
+          <CardContent className="p-8 text-center">
+            <ClipboardCheck className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-gray-900">Report Not Found</h2>
+            <p className="text-sm text-gray-500 mt-2">This report link may have expired or is invalid.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const p = inspection.propertyDetails;
+  const deficiencies = inspection.items.filter((i) => i.rating === "Poor" || i.rating === "Fair");
+  const categories = [...new Set(inspection.items.map((i) => i.category))];
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-3xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <ClipboardCheck className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-gray-900">InspectFlow</span>
+          </div>
+          <p className="text-sm text-gray-500">Shared Inspection Report</p>
+        </div>
+
+        <Card>
+          <CardContent className="p-6 sm:p-8 space-y-8">
+            {/* Company Header */}
+            <div className="text-center border-b border-gray-200 pb-6">
+              <h2 className="text-2xl font-bold text-gray-900">{mockProfile.companyName}</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                {mockProfile.phone} | {mockProfile.email} | License: {mockProfile.licenseNumber}
+              </p>
+              <h3 className="text-lg font-semibold text-blue-600 mt-4">Home Inspection Report</h3>
+            </div>
+
+            {/* Property Details */}
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Home className="w-4 h-4 text-blue-600" /> Property Details
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                <div className="flex items-center gap-2"><MapPin className="w-3 h-3 text-gray-400" />{p.address}</div>
+                <div><span className="text-gray-500">Type:</span> <span className="font-medium">{p.propertyType}</span></div>
+                <div><span className="text-gray-500">Year Built:</span> <span className="font-medium">{p.yearBuilt}</span></div>
+                <div><span className="text-gray-500">Sq Ft:</span> <span className="font-medium">{p.sqft}</span></div>
+                <div><span className="text-gray-500">Beds/Baths:</span> <span className="font-medium">{p.bedrooms}/{p.bathrooms}</span></div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Client */}
+            <div className="flex gap-6 text-sm">
+              <div className="flex items-center gap-2"><User className="w-4 h-4 text-gray-400" />{p.clientName}</div>
+              <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-gray-400" />{p.clientEmail}</div>
+              <div className="flex items-center gap-2"><Calendar className="w-4 h-4 text-gray-400" />{inspection.createdAt}</div>
+            </div>
+
+            <Separator />
+
+            {/* Findings */}
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-4">Inspection Findings</h4>
+              {categories.map((cat) => {
+                const catItems = inspection.items.filter((i) => i.category === cat);
+                return (
+                  <div key={cat} className="mb-6">
+                    <h5 className="text-sm font-semibold text-gray-700 mb-2 bg-gray-50 px-3 py-2 rounded-lg">{cat}</h5>
+                    <div className="space-y-2 px-1">
+                      {catItems.map((item) => (
+                        <div key={item.id} className="flex items-start gap-3 py-1.5">
+                          <Badge
+                            variant={item.rating === "Good" ? "good" : item.rating === "Fair" ? "fair" : item.rating === "Poor" ? "poor" : "secondary"}
+                            className="w-20 justify-center text-xs shrink-0 mt-0.5"
+                          >
+                            {item.rating}
+                          </Badge>
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-gray-900">{item.itemName}</span>
+                            {item.notes && <p className="text-sm text-gray-500 mt-0.5">{item.notes}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Deficiencies */}
+            {deficiencies.length > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-semibold text-red-700 mb-3">Summary of Deficiencies ({deficiencies.length})</h4>
+                  <div className="bg-red-50 rounded-lg p-4 space-y-2">
+                    {deficiencies.map((item, idx) => (
+                      <div key={item.id} className="text-sm">
+                        <span className="font-medium text-red-800">{idx + 1}. {item.category} — {item.itemName}</span>
+                        <span className="text-red-600 ml-1">({item.rating})</span>
+                        {item.notes && <span className="text-red-700">: {item.notes}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Signature */}
+            <div className="border-t border-gray-200 pt-8 mt-8">
+              <div className="flex justify-between items-end">
+                <div>
+                  <div className="w-48 border-b border-gray-400 mb-1" />
+                  <p className="text-sm text-gray-500">Inspector Signature</p>
+                </div>
+                <div className="text-right text-sm text-gray-500">
+                  <p>Date: {inspection.createdAt}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Download button */}
+        <div className="text-center">
+          <Button variant="outline"><Download className="w-4 h-4 mr-2" />Download PDF</Button>
+          <p className="text-xs text-gray-400 mt-3">
+            Report generated by InspectFlow — Professional Inspection Software
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
