@@ -34,7 +34,48 @@ flowchart LR
 
 - [Stack](#stack)
 - [Architecture](#architecture)
+- [Report build (algorithm)](#report-build-algorithm)
+- [Share sequence](#share-sequence)
 - [Getting Started](#getting-started)
+
+## Report build (algorithm)
+
+```mermaid
+flowchart LR
+    A([new inspection])
+    B["add property + sections<br/>roof · plumbing · electrical · ..."]
+    C["per section: photos + notes"]
+    D{"more rooms?"}
+    E["summary + recommendations"]
+    F["jspdf + html2canvas<br/>render PDF"]
+    G["upload to Supabase Storage"]
+    H["create shareable URL"]
+    Z([share with client])
+    A --> B --> C --> D
+    D -- yes --> C
+    D -- no  --> E --> F --> G --> H --> Z
+```
+
+## Share sequence
+
+```mermaid
+sequenceDiagram
+    participant I as inspector
+    participant APP as /dashboard
+    participant DB as Supabase
+    participant ST as Supabase Storage
+    participant C as client
+
+    I->>APP: finish report
+    APP->>APP: render PDF (client side)
+    APP->>ST: upload report.pdf
+    ST-->>APP: URL
+    APP->>DB: insert reports row
+    APP-->>I: shareable link
+    I->>C: send link
+    C->>ST: GET report.pdf
+    ST-->>C: PDF
+```
 
 ## Stack
 
