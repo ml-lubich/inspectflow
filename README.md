@@ -37,6 +37,7 @@ flowchart LR
 - [Report build (algorithm)](#report-build-algorithm)
 - [Share sequence](#share-sequence)
 - [Getting Started](#getting-started)
+- [🗺️ Repository map](#️-repository-map)
 
 ## Report build (algorithm)
 
@@ -103,3 +104,30 @@ bun run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+
+## 🗺️ Repository map
+
+Top-level layout of `inspectflow` rendered as a Mermaid mindmap (auto-generated from the on-disk tree).
+
+```mermaid
+mindmap
+  root((inspectflow))
+    public/
+      file.svg
+      globe.svg
+      next.svg
+      vercel.svg
+      window.svg
+    src/
+      app
+      components
+      lib
+    supabase/
+      migrations
+    files
+      README.md
+      next.config.ts
+      package.json
+      tsconfig.json
+```
