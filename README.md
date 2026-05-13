@@ -38,6 +38,7 @@ flowchart LR
 - [Share sequence](#share-sequence)
 - [Getting Started](#getting-started)
 - [🗺️ Repository map](#️-repository-map)
+- [📊 Code composition](#-code-composition)
 
 ## Report build (algorithm)
 
@@ -130,4 +131,21 @@ mindmap
       next.config.ts
       package.json
       tsconfig.json
+```
+
+
+## 📊 Code composition
+
+File-type breakdown of source under this repo (skips `.git`, `node_modules`, build caches, lockfiles).
+
+```mermaid
+pie showData title File-type composition of inspectflow (57 files)
+    "TypeScript" : 33
+    "Other" : 9
+    "SVG image" : 5
+    "Markdown" : 4
+    "JavaScript" : 2
+    "JSON" : 2
+    "SQL" : 1
+    "Image" : 1
 ```
